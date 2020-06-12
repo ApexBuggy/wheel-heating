@@ -4,10 +4,23 @@
 #include <LiquidCrystal_PCF8574.h> // LCD Module
 
 /*
+ * TODO:
+ */
+
+// Error handling
+// Status LEDs, or LCD status
+// Way to lock temperatures so dials don't accidentally move
+// "Minimum off time" for heater so it doesn't spam on/off
+
+/*
  * Configuration
  */
 
-const int NUM_WHEELS = 4;
+const int NUM_WHEELS = 3;
+// If you change this parameter (particularly to increase it), be sure
+// to change ALL the initializer lists declared with length NUM_WHEELS
+// to match the new value. If NUM_WHEELS is greater than the length of
+// a initializer list, some elements will default to 0.
 
 // Minimum and maximum settings for the heater (Fahrenheit).
 // This is the same as the full range of the potentiometer.
@@ -15,19 +28,19 @@ const int NUM_WHEELS = 4;
 const int TEMP_MAP_LO = 50;
 const int TEMP_MAP_HI = 150;
 
-// Pins and addrs for wheel   A,    B,    C,    D
-const int dimmer_pins[] = {   3,    4,    5,    6};
-const int dial_pins[]   = {  A0,   A1,   A2,   A3};
-const int therm_addrs[] = {0x5A, 0x5B, 0x5C, 0x5D};
+// Pins and addrs for wheel             A,    B,    C
+const int DIMMER_PINS[NUM_WHEELS] = {   3,    4,    5};
+const int DIAL_PINS[NUM_WHEELS]   = {  A0,   A1,   A2};
+const int THERM_ADDRS[NUM_WHEELS] = {0x5A, 0x5B, 0x5C};
 
 // How often to update the LCD
-const unsigned long lcd_update_period = 500; // ms.
+const unsigned long LCD_UPDATE_PERIOD = 500; // ms.
 
 // Purely visual. Define a couple custom characters for the LCD to
 // indicate whether the heater is on or off.
-const int on_char = 1;
-const int off_char = 2;
-int on_char_bits[8] = { // A little up arrow
+const int ON_CHAR = 1;
+const int OFF_CHAR = 2;
+const int ON_CHAR_BITS[8] = { // A little up arrow (heat is going up)
   B00000,
   B00000,
   B01000,
@@ -37,7 +50,7 @@ int on_char_bits[8] = { // A little up arrow
   B00000,
   B00000,
 };
-int off_char_bits[8] = { // A little square
+const int OFF_CHAR_BITS[8] = { // A little square (heat is "stopped")
   B00000,
   B00000,
   B11100,
@@ -53,24 +66,24 @@ int off_char_bits[8] = { // A little square
  */
 
 // Operating temperature bounds
-const float min_temp = 20.0;  // deg F. Perhaps this is unreasonably low.
-const float max_temp = 155.0; // deg F. Perhaps this is also unreasonably low.
+const float MIN_TEMP = 20.0;  // deg F. Perhaps this is unreasonably low.
+const float MAX_TEMP = 155.0; // deg F. Perhaps this is also unreasonably low.
 
 // How many times we allow reading exactly the same temperature
-const int max_temp_count = 5;
+const int MAX_TEMP_COUNT = 5;
 
 // How long it's sane to go without a new temperature reading
-const unsigned long max_inter_temp_ms = 200; // ms. Probably overly generous.
+const unsigned long MAX_INTER_TEMP_TIME = 200; // ms. Probably overly generous.
 
 /*
  * Globals
  */
 
 // Declare dimmers, passing each pin to the (implicit) constructor
-dimmerLamp dimmers[] = {dimmer_pins[0], dimmer_pins[1],
-                        dimmer_pins[2], dimmer_pins[3]};
+dimmerLamp dimmers[NUM_WHEELS] = {DIMMER_PINS[0], DIMMER_PINS[1],
+                                  DIMMER_PINS[2]};
 
-// Declare thermometers. The constructor doesn't take an argument, 
+// Declare thermometers. The constructor doesn't take an argument,
 // so we don't need the array as above.
 IRTherm therms[NUM_WHEELS];
 
@@ -94,22 +107,32 @@ unsigned long prev_lcd_time;
 
 void setup() {
   Serial.begin(9600);
+  Serial.println("Beginnning initialization");
 
-  // Initialize LCD
+  Serial.print("Initializing LCD... ");
+  // TODO: you may need Serial.flush(); after every call to Serial.print
+  // if the string does not appear.
   lcd.begin(16, 2);      // 16 cols x 2 rows
   lcd.setBacklight(255); // Enable backlight
   lcd.noCursor();
-  lcd.createChar(on_char, on_char_bits); // Create the custom characters
-  lcd.createChar(off_char, off_char_bits);
+  lcd.createChar(ON_CHAR, ON_CHAR_BITS); // Create the custom characters
+  lcd.createChar(OFF_CHAR, OFF_CHAR_BITS);
+  Serial.println("done.");
 
   // Initialize each wheel
   for (int i = 0; i < NUM_WHEELS; i++) {
+    Serial.print("Initializing wheel #");
+    Serial.println(i);
+
+    Serial.print("  Initializing dimmer... ");
     dimmers[i].begin(NORMAL_MODE, OFF);
     dimmers[i].setPower(1);
+    Serial.println("done.");
 
-    // Initialize the thermometer at the given 7-bit address
-    therms[i].begin(therm_addrs[i]);
+    Serial.print("  Initializing thermometer... ");
+    therms[i].begin(THERM_ADDRS[i]);
     therms[i].setUnit(TEMP_F); // Fahrenheit, I guess
+    Serial.println("done.");
 
     target_temps[i] = 0.0; // Will be overwritten in the loop
 
@@ -117,33 +140,29 @@ void setup() {
     prev_temp_count[i] = 0;
     prev_temp_time[i] = millis();
 
-    pinMode(dial_pins[i], INPUT);
+    pinMode(DIAL_PINS[i], INPUT);
+    Serial.println("done.");
   }
-
-  // TODO:
-  // Status LED/LEDs?
-  // Something to indicate if heater is currently on
-  // Way to lock temperatures so dials don't accidentally move
-  // "Minimum off time" for heater
-  // Wiring diagram
+  
+  Serial.println("Initialization complete");
 }
 
 void loop() {
   for (int i = 0; i < NUM_WHEELS; i++) {
     // Read the potentiometer for target temp
-    target_temps[i] = (float)(map(analogRead(dial_pins[i]),   // Map the sensor reading
+    target_temps[i] = (float)(map(analogRead(DIAL_PINS[i]),   // Map the sensor reading
                                   0, 1023,                    // From analogRead's range
                                   TEMP_MAP_LO, TEMP_MAP_HI)); // To our setting range
-    
+
     // Check if a new reading is available for this sensor
-    if (therms[i].read()) {      
+    if (therms[i].read()) {
       prev_temp_time[i] = millis();
-      
+
       // And get that reading (in Fahrenheit)
       float temp = therms[i].object();
       float ambient_temp = therms[i].ambient();
 
-      if (temp == prev_temp[i]) { // Generally == on floats is bad, but 
+      if (temp == prev_temp[i]) { // Generally == on floats is bad, but
                                   // here we want an exact comparison
         prev_temp_count[i]++;
       } else {
@@ -152,22 +171,22 @@ void loop() {
       }
 
       // Sanity check the readings
-      if (temp < min_temp || temp > max_temp) {
+      if (temp < MIN_TEMP || temp > MAX_TEMP) {
         // Object temp out of range
         // TODO error
-        
-      }
-      
-      if (ambient_temp < min_temp || ambient_temp > max_temp) {
-        // Ambient temp out of range
-        // TODO error
-        
+
       }
 
-      if (prev_temp_count[i] > max_temp_count) {
+      if (ambient_temp < MIN_TEMP || ambient_temp > MAX_TEMP) {
+        // Ambient temp out of range
+        // TODO error
+
+      }
+
+      if (prev_temp_count[i] > MAX_TEMP_COUNT) {
         // Temperature exactly the same for too long
         // TODO error
-        
+
       }
 
       // Change the heat
@@ -177,9 +196,9 @@ void loop() {
       //  Even on the lowest setting, the dimmer seems to be too hot, though that may
       //  be user error.
       // More sophisticated approaches like PID need some kind of analog control.
-      //  The dimmer would achieve this, but you could also do something like turn the 
+      //  The dimmer would achieve this, but you could also do something like turn the
       //  heater on for a variable fraction of every second.
-      
+
       bool cur_state = dimmers[i].getState();
       if (cur_state == ON && temp > target_temps[i]) {
         // Heat is on but the temperature is too high
@@ -188,40 +207,37 @@ void loop() {
         // Heat is off but the temperature is too low
         dimmers[i].setState(ON);
       }
-      
+
     } else {
       // Sanity check time if new reading is unavailable
-      if (millis() > prev_temp_time[i] + max_inter_temp_ms) {
+      if (millis() > prev_temp_time[i] + MAX_INTER_TEMP_TIME) {
         // No new reading for too long
         // TODO error
-        
+
       }
-      
+
     }
   }
 
   // Update the LCD
   unsigned long cur_time = millis();
-  if (cur_time > prev_lcd_time + lcd_update_period) {
+  if (cur_time > prev_lcd_time + LCD_UPDATE_PERIOD) {
     prev_lcd_time = cur_time;
 
     // One row is 16 chars plus one for the NUL terminator
     char lcd_row[16+1];
-    // NUL terminate the string
-    lcd_row[sizeof(lcd_row) - 1] = '\0';
 
     char *msg_ptr = lcd_row;
 
     // Take care, as this does not clear the display (that causes a bit of flashing).
-    // Instead, this makes sure to write something (number or space) to every character
-    // on the screen every time.
+    // Instead, this makes sure to write something (character or space) to the same
+    // characters on the screen every time.
     // lcd.clear();
-    lcd.home();
+    lcd.home(); // Move cursor to the upper-left corner
 
     for (int i = 0; i < NUM_WHEELS; i++) {
       // Fill buffer with recent temp reading,
-      pad_to_3(139., msg_ptr);
-//      pad_to_3(prev_temp[i], msg_ptr);
+      pad_to_3(prev_temp[i], msg_ptr);
       msg_ptr += 3;
       // then '/',
       *msg_ptr = '/';
@@ -230,16 +246,20 @@ void loop() {
       pad_to_3(target_temps[i], msg_ptr);
       msg_ptr += 3;
       // then an indicator of whether the heater is on or off.
-      *msg_ptr = (dimmers[i].getState() ? on_char : off_char);
+      *msg_ptr = (dimmers[i].getState() ? ON_CHAR : OFF_CHAR);
       msg_ptr += 1;
 
-      // Two entries fill the row. Print and reset.
-      if ((i+1) % 2 == 0) {
+      // Print and reset when either a row is filled (exactly 2 entries)
+      // or this is the last entry
+      if ((i+1) % 2 == 0 || (i+1) == NUM_WHEELS) {
+        // NUL terminate the string
+        *msg_ptr = '\0';
+        
         Serial.print(lcd_row);
         lcd.print(lcd_row);
 
         msg_ptr = lcd_row;
-        
+
         // Once we're going to the second row, move the cursor down
         if ((i+1) / 2 == 1) {
           lcd.setCursor(0,1);
@@ -254,7 +274,7 @@ void loop() {
 
 // LCD screen layout
 //  ----------------
-// |135/140^142/140.| Except ^ and . are on_char and off_char, see above.
+// |135/140^142/140.| Except ^ and . are ON_CHAR and OFF_CHAR, see above.
 // |130/130.139/145^|
 //  ----------------
 
@@ -268,14 +288,14 @@ void pad_to_3(float f, char *buf) {
   if (i < 0) {
     strcpy(buf, "UNF"); // Underflow
     return;
-  } 
-  
+  }
+
   if (i < 100) {
     // 1- and 2-digit numbers should skip the first character, filling with space
     buf[0] = ' ';
     buf++;
   }
-  
+
   if (i < 10) {
     // 1-digit number should skip another character, filling with space
     buf[0] = ' ';

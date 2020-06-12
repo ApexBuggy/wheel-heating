@@ -13,9 +13,19 @@ continued by that group and other members of Apex.
 * The parts list below is very incomplete
 
 ## Parts
+
 * [MLX90614 IR temperature sensor](https://www.adafruit.com/product/1748)
 * [RobotDyn AC light dimmer module](https://robotdyn.com/ac-light-dimmer-module-1-channel-3-3v-5v-logic-ac-50-60hz-220v-110v.html)
 * [16x2 LCD display with PCF8574 I2C adapter](https://www.amazon.com/JANSANE-Arduino-Display-Interface-Raspberry/dp/B07D83DY17/)
+
+## Schematic
+
+![Schematic](/schematic.svg)
+
+This schematic was created using Circuit Diagram and is available
+[here](https://crcit.net/c/bdd47728927a4dc786cfb47f31c64128). If the
+schematic changes, it is possible to make a copy of this one and
+modify the copy. Update the link in this README to be current.
 
 ## Code Dependencies
 
@@ -36,8 +46,10 @@ Arduino IDE once the library is installed (File > Examples > SparkFun
 MLX90614 > MLX90614\_Set\_Address), or
 [here](https://github.com/sparkfun/SparkFun_MLX90614_Arduino_Library/blob/master/examples/MLX90614_Set_Address/MLX90614_Set_Address.ino).
 For each new sensor, connect it to an arduino and give it a new
-address by changing newAddress in the example. I used 0x5A, 0x5B,
-0x5C, and 0x5D.
+address by changing newAddress in the example. I used 0x5A, 0x5B, and
+0x5C. They should all respond to address 0x0, so you should be able to
+use that as the oldAddress if you aren't sure what the actual address
+is.
 
 ## Additional Resources
 * Adafruit has a good tutorial on using the IR thermometer:
