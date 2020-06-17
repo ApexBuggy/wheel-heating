@@ -105,6 +105,42 @@ unsigned long prev_lcd_time;
  * Code
  */
 
+// This function turns off the heaters, prints an error message, and
+// infinite loops.
+
+// This is a bad way to handle errors. Depending on the type of error,
+// it may be correct to shut off all the heaters, just one heater, or
+// perhaps something else entirely. Errors should be reported in some
+// better way (probably wheel-specific). For the rest of the heater to
+// continue working, this function should not infinite loop.
+
+// This is here to force you to write a better handler. DO NOT simply
+// remove the infinite loop and call it good. Be very careful about
+// how you approach this, have multiple people review the strategy and
+// the code itself, etc. etc. Consider mechanical failures (the wheel
+// gets stuck, a wire comes loose), part failures (the servo breaks,
+// the temperature sensor breaks), and software failures (the code did
+// something wrong). I've tried to identify some common error cases in
+// the code, but there are many more. Be sure that error handling code
+// doesn't break the rest of the code.
+
+// TODO: replace with a proper error handler
+void bad_error_handler() {
+  // Disable heaters
+  for (int i = 0; i < NUM_WHEELS; i++) {
+      dimmers[i].setState(OFF);
+  }
+
+  // Print an error message
+  lcd.clear();
+  lcd.print("ERROR >:(");
+
+  // Never return
+  while(1) {
+      // Infinite loop
+  }
+}
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Beginnning initialization");
@@ -143,7 +179,7 @@ void setup() {
     pinMode(DIAL_PINS[i], INPUT);
     Serial.println("done.");
   }
-  
+
   Serial.println("Initialization complete");
 }
 
@@ -174,18 +210,21 @@ void loop() {
       if (temp < MIN_TEMP || temp > MAX_TEMP) {
         // Object temp out of range
         // TODO error
+        bad_error_handler();
 
       }
 
       if (ambient_temp < MIN_TEMP || ambient_temp > MAX_TEMP) {
         // Ambient temp out of range
         // TODO error
+        bad_error_handler();
 
       }
 
       if (prev_temp_count[i] > MAX_TEMP_COUNT) {
         // Temperature exactly the same for too long
         // TODO error
+        bad_error_handler();
 
       }
 
@@ -213,6 +252,7 @@ void loop() {
       if (millis() > prev_temp_time[i] + MAX_INTER_TEMP_TIME) {
         // No new reading for too long
         // TODO error
+        bad_error_handler();
 
       }
 
@@ -254,7 +294,7 @@ void loop() {
       if ((i+1) % 2 == 0 || (i+1) == NUM_WHEELS) {
         // NUL terminate the string
         *msg_ptr = '\0';
-        
+
         Serial.print(lcd_row);
         lcd.print(lcd_row);
 

@@ -5,11 +5,19 @@ continued by that group and other members of Apex.
 
 ## To-dos
 
+* **EVERY CONNECTION MUST BE SOLDERED**. The only _possible_ exception
+  to this is where wires plug directly into the Arduino. These
+  connections should still be secured in some other way (such as
+  tape). All breadboard-style jumper wires should be replaced with
+  real wires.
+* This design must be cleared with the fire marshal
 * This repository still needs a lot of documentation, particularly for
-  the electrical and mechanical assemblies
+  the mechanical assemblies
 * The hardware for the project is still a prototype and needs a final revision
 * The code has the core functionalities, but lacks several nice
   features and needs robust error checking
+* Along the lines of error checking, it would be smart to add an error
+  indicator, such as a speaker or large LED
 * The parts list below is very incomplete
 
 ## Parts
