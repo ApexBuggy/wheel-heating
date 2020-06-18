@@ -1,6 +1,6 @@
 This project contains the code and documentation for the wheel heating
 project. This project was started by the team participating in
-(Build18 2020)[http://www.build18.org/garage/project/577/], and was
+[Build18 2020](http://www.build18.org/garage/project/577/), and was
 continued by that group and other members of Apex.
 
 ## To-dos
@@ -19,6 +19,12 @@ continued by that group and other members of Apex.
 * Along the lines of error checking, it would be smart to add an error
   indicator, such as a speaker or large LED
 * The parts list below is very incomplete
+* The wheels should rotate to ensure even heating. There are enough
+  PWM pins available to drive each one separately, but it would also
+  be reasonable to control all the motors on the same signal line.
+  **Driving multiple servos will require a separate 5V power source**,
+  as the Arduino can't reliably source enough current through its 5V
+  pin.
 
 ## Parts
 
